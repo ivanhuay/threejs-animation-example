@@ -12,6 +12,7 @@ var geometry = new THREE.BoxGeometry(1, 1, 1);
 var material = new THREE.MeshLambertMaterial({
   color: 0x00ff00
 });
+material.color.convertSRGBToLinear();
 camera.position.set(4,30,5);
 // camera.position.z = 50;
 // camera.position.y = 3;
@@ -50,11 +51,11 @@ function getHight(x,z){
   // console.log(':',x,z);
   // var arg = (Math.pow(x,2)+Math.pow(z,2),0.5);
   // return Math.pow(arg)*Math.sin(arg)/arg;
-  return Math.sin(0.05*x)*Math.cos(0.05*z)/0.05;
+  return Math.sin(0.1*x)*Math.cos(0.1*z)/0.1;
   // return 5*Math.sin(z/10) +5*Math.cos(-x/10);
 }
 function generateMap(){
-  var limit = 50;
+  var limit = 10;
   for(var z=0; z<limit;z++){
     if(!map[z]){
       map[z] = [];
@@ -122,12 +123,48 @@ for(var reverseZ=1; reverseZ < map.length; reverseZ++){
       );
   }
 }
-
+function cleanTriangles(){
+  triangles.forEach(function(triangle){
+    scene.remove(triangle);
+  });
+  triangles = [];
+}
+function getRenderFromPosition(){
+    var radio = 15;
+    var startX = camera.position.x - radio;
+    var endX = camera.position.x + radio;
+    var startZ = camera.position.z - radio;
+    var endZ = camera.position.z + radio;
+    for(var x=startX; x<endX;x++){
+        for(var z=startZ; z<endZ; z++){
+          createTriangle(
+            new THREE.Vector3( x,  getHight(x,z+1), z+1 ),
+            new THREE.Vector3( x+1, getHight(x+1,z), z),
+            new THREE.Vector3( x, getHight(x,z), z )
+          );
+          createTriangle(
+            new THREE.Vector3( x,  getHight(x,z+1), z+1),
+            new THREE.Vector3( x+1, getHight(x+1,z+1), z+1),
+            new THREE.Vector3( x+1, getHight(x+1,z), z)
+          );
+        }
+    }
+}
 var time = 0;
+var backposition = new THREE.Vector3(0,0,0);
 function animate() {
   time++;
   requestAnimationFrame(animate);
   controls.update();
+  var diffX = Math.abs(camera.position.x - backposition.x);
+  var diffZ = Math.abs(camera.position.z - backposition.z);
+  var samePosition = diffX > 20 && diffZ>20;
+  if(!samePosition){
+    cleanTriangles();
+    getRenderFromPosition();
+    console.log('render;', backposition);
+    backposition = camera.position.clone();
+  }
   // customControls.update();
   renderer.render(scene, camera);
 }
